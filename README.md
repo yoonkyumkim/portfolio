@@ -23,6 +23,7 @@
 ### Framework
 
 - Springboot
+- .NET
 - Protocol buffers
 - Netty
 - Nodejs
@@ -37,6 +38,7 @@
 
 - Mysql
 - Oracle
+- mongoDB
 
 ### DevOps
 
@@ -46,6 +48,7 @@
 ### Cloud Server
 
 - Amazon Web Service
+- naver cloud
 
 ### OS
 
@@ -65,6 +68,7 @@
 ### Version Control
 
 - Github
+- Git
 - SVN
 
 ### Certificate / License
