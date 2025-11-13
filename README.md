@@ -434,6 +434,73 @@ WebHookRemote.prototype.addWebHook = function (args, cb) {
     return cb();
 };
 ```
+### 유저 데이터 캐싱 사용 (C#)
+```
+public async Task<CachedUserBaseInfo> GetLoginUserBaseInfo(string regionId, string serverId, string userId)
+{
+	RegionServerCodeDef regionServerCode = new() { RegionId = regionId, ServerId = serverId };
+	if (UserBaseInfoList.TryGetValue(userId, out CachedUserBaseInfo cachedUserBaseInfo) == false)
+	{
+		// 유저 캐싱 데이터가 없을 경우, 세션 체크를 해서 세션이 존재하면 로그인 과정 없이 유저 정보 캐싱을 생성해서 넘겨준다.
+		UserBaseInfo userBaseInfo = new(regionServerCode, userId, redisDbManager.GetCurrentDatabase(), mongoClient, mongoDbConfiguration, logger);
+		if (await userBaseInfo.PrepareData() != EPacketResult.Ok)
+		{
+			new ElsaLogSystem(LogCategory, regionServerCode.GetRegionServerId()).LogWarning($"[{LogCategory}] GameDataManager.GetUserBaseInfo. NotfoundUser. UserId : {userId}. Try to reload");
+			return null;
+		}
+
+		// 로딩 후 세션 체크. 현재 세션이 존재하지 않으면 재로그인으로 유도한다.
+		UserSessionInfo userSessionInfo = new(userBaseInfo.UserData.GamepotId, redisDbManager.GetCurrentDatabase(), mongoClient, mongoDbConfiguration, logger);
+		if (await userSessionInfo.PrepareData() != EPacketResult.Ok)
+		{
+			new ElsaLogSystem(LogCategory, regionServerCode.GetRegionServerId()).LogWarning($"[{LogCategory}] GameDataManager.GetUserBaseInfo. session is over. UserId : {userId}");
+			return null;
+		}
+
+		DateTime now = SharedTimer.DateTimeNow("0", "0");
+		UserSessionData userSessionData = userSessionInfo.SessionData;
+		TimeSpan duration = now - userSessionData.LastAccessTime;
+		if (duration.TotalMinutes > SessionTimeOverTimeInMinutes)
+		{
+			// 일정 시간 이상이면 로그인으로 유도(일단 30분으로 설정)
+			new ElsaLogSystem(LogCategory, regionServerCode.GetRegionServerId()).LogWarning($"[{LogCategory}] GameDataManager.GetUserBaseInfo. session time is over. UserId : {userId}");
+			return null;
+		}
+
+		AddLoginUser(userBaseInfo);
+		if (UserBaseInfoList.TryGetValue(userId, out cachedUserBaseInfo) == false)
+		{
+			// 추가를 했는데도 없으면 문제가 있는거임
+			new ElsaLogSystem(LogCategory, regionServerCode.GetRegionServerId()).LogWarning($"[{LogCategory}] GameDataManager.GetUserBaseInfo. NotfoundUser. UserId : {userId}. Reload failed");
+			return null;
+		}
+	}
+
+	cachedUserBaseInfo.UserBaseInfo.UserData.UserTimeInfo.LastAccessDateTime = SharedTimer.DateTimeNow(regionServerCode);
+	return cachedUserBaseInfo;
+}
+-- 중략 --
+// 저장은 redis lock 을 사용하여 동시 요청에 대한 이슈 방지 
+public async Task<AsyncLockHandler> LockAsync()
+        {
+            string customLockString = $"{LockString}_{UserBaseInfo.GetLockString()}";
+            return await asyncLockFactory.GetLockAsync(customLockString);
+        }
+
+        public void AddUpdateQueue(EUserDataCacheType type)
+        {
+            foreach (EUserDataCacheType cacheType in UpdateQueue)
+            {
+                if (cacheType == type)
+                {
+                    return;
+                }
+            }
+
+            UpdateQueue.Enqueue(type);
+            CachingQueueProcessUpdater.AddCachingQueueProcess(this);
+        }
+```
 ### SP 작성 샘플
 ```
 DELIMITER $$
