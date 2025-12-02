@@ -103,6 +103,7 @@
 - 라이브 출시 직후 서버 안정화
 - 동시 접속 트래픽 최적화 (500명 -> 2500명)
 - DB 설계 및 최적화
+- Trade Off 공유
 
 ### 기타
 - 운영툴 개발
@@ -165,6 +166,8 @@
 - 인앱 영수증 검증 개발
 - 플랫폼간 데이터 연동 기능 구현
 - AWS 서버 인프라 구축
+- 중국 로컬라이징 최대 동시 접속 2만 대응
+- Auto Scaling 활용 부하 분산
 
 <!--
 ### 기획
@@ -486,6 +489,9 @@ public async Task<CachedUserBaseInfo> GetLoginUserBaseInfo(string regionId, stri
 	return cachedUserBaseInfo;
 }
 -- 중략 --
+```
+### Redis Lock 을 써서 다발성 동시 요청에 대한 대응
+```
 // 저장은 redis lock 을 사용하여 동시 요청에 대한 이슈 방지 
 public async Task<AsyncLockHandler> LockAsync()
         {
