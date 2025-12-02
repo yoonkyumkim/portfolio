@@ -774,7 +774,6 @@ COLLATE='utf8_general_ci'
 ### Jenkins CI/CD
 - 젠킨스를 사용하여 배포 전략 수립
 - Git, SVN 배포 경험
-
 ![](jenkins.jpg) 
 
 ### 운영 지표툴 개발화면
